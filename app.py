@@ -4,7 +4,6 @@ import pandas as pd
 import requests
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-import io
 import base64
 
 # ✅ Ajouter Bootstrap + Font Awesome pour un design moderne
@@ -75,7 +74,7 @@ df_mrc = fetch_mrc_roles()
 app.layout = html.Div(className="container py-5", children=[
     html.Div(className="text-center mb-5", children=[
         html.H1("📊 Analyse des rôles d’évaluation foncière du Québec", className="fw-bold text-primary"),
-        html.P("Sélectionnez une MRC et analysez les codes CUBF avec un design moderne ✨", className="lead text-muted")
+        html.P("Sélectionnez une MRC et analysez les codes CUBF avec un design élégant et responsive ✨", className="lead text-muted")
     ]),
 
     html.Div(className="card p-4 shadow-sm mb-4", children=[
@@ -135,13 +134,17 @@ def load_xml(n_clicks, selected_url):
     checklist_groups = []
     for millier in sorted(grouped.keys()):
         checklist_groups.append(html.Div(className="card p-3 mb-3", children=[
-            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", className="fw-semibold"),
-            dcc.Checklist(
-                options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
-                id={'type': 'cubf-checklist', 'index': str(millier)},
-                inline=True,
-                className="form-check"
-            )
+            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", className="fw-semibold mb-2"),
+            html.Div(className="row row-cols-2 row-cols-md-3 g-2", children=[
+                html.Div(className="col", children=[
+                    dcc.Checklist(
+                        options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
+                        id={'type': 'cubf-checklist', 'index': str(millier)},
+                        inline=True,
+                        className="form-check"
+                    )
+                ])
+            ])
         ]))
 
     return selected_url, "✅ Fichier XML chargé avec succès.", html.Div([
@@ -191,7 +194,7 @@ def update_resultats(selected_codes_groups):
             columns=[{'name': col, 'id': col} for col in df_resume.columns],
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'center'},
-            className="table table-striped"
+            className="table table-striped table-hover"
         ),
         html.A("⬇️ Télécharger les résultats filtrés (CSV)", href=csv_href, download="resultats_filtrés.csv",
                className="btn btn-outline-primary mt-3 w-100")
