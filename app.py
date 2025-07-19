@@ -5,13 +5,11 @@ import requests
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-# ✅ Ajout de Bootstrap et de custom CSS
+# ✅ Import Bootstrap CSS
 app = dash.Dash(__name__, external_stylesheets=[
-    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
-    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
 ])
 server = app.server
-
 
 def fetch_mrc_roles():
     resource_id = "d2db6102-9215-4abc-9b5b-2c37f2e12618"
@@ -69,11 +67,11 @@ def parse_xml_to_df(xml_bytes):
 
 df_mrc = fetch_mrc_roles()
 
-# ✅ Nouveau layout modernisé
-app.layout = html.Div(className="container py-5", children=[
+# ✅ Nouveau layout avec Bootstrap
+app.layout = html.Div(className="container my-5", children=[
     html.Div(className="text-center mb-5", children=[
         html.H1("📊 Analyse des rôles d’évaluation foncière du Québec", className="fw-bold text-primary"),
-        html.P("Sélectionnez une MRC et analysez les codes CUBF avec un design épuré ✨", className="lead text-muted")
+        html.P("Sélectionnez une MRC et analysez les codes CUBF rapidement", className="lead text-muted")
     ]),
 
     html.Div(className="card p-4 shadow-sm mb-4", children=[
@@ -84,19 +82,17 @@ app.layout = html.Div(className="container py-5", children=[
             placeholder="Sélectionner une MRC",
             className="form-select mb-3"
         ),
-        html.A(id='download-link', href="#", children="⬇️ Télécharger le fichier XML", className="d-block mb-3 text-decoration-none text-primary fw-semibold"),
-        html.Button("🚀 Charger et analyser le fichier XML", id='load-button', n_clicks=0, className="btn btn-primary w-100"),
-        html.Div(id='load-status', className="alert alert-success mt-3", role="alert")
+        html.Button("🚀 Charger et analyser le fichier XML", id='load-button', n_clicks=0, className="btn btn-success w-100"),
+        html.Div(id='load-status', className="alert alert-info mt-3")
     ]),
 
-    html.Div(id='cubf-section', className="my-4"),
-    html.Div(id='resultats', className="my-5")
+    html.Div(id='cubf-section', className="card p-4 shadow-sm my-4"),
+    html.Div(id='resultats', className="card p-4 shadow-sm my-5 bg-light")
 ])
 
 
 @app.callback(
-    [Output('download-link', 'href'),
-     Output('load-status', 'children'),
+    [Output('load-status', 'children'),
      Output('cubf-section', 'children')],
     Input('load-button', 'n_clicks'),
     State('mrc-dropdown', 'value'),
@@ -104,17 +100,17 @@ app.layout = html.Div(className="container py-5", children=[
 )
 def load_xml(n_clicks, selected_url):
     if not selected_url:
-        return "#", "⚠️ Veuillez sélectionner une MRC.", None
+        return ("⚠️ Veuillez sélectionner une MRC.", None)
 
     try:
         response = requests.get(selected_url)
         response.raise_for_status()
         df_xml = parse_xml_to_df(response.content)
     except Exception as e:
-        return "#", f"❌ Erreur : {e}", None
+        return (f"❌ Erreur lors du téléchargement : {e}", None)
 
     if df_xml.empty:
-        return "#", "⚠️ Aucun enregistrement trouvé.", None
+        return ("⚠️ Aucun enregistrement trouvé.", None)
 
     app.server.df_xml = df_xml
 
@@ -130,33 +126,17 @@ def load_xml(n_clicks, selected_url):
 
     dropdowns = []
     for millier in sorted(grouped.keys()):
-        dropdowns.append(html.Div(className="accordion-item", children=[
-            html.H2(className="accordion-header", children=[
-                html.Button(
-                    f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus",
-                    className="accordion-button collapsed",
-                    type="button",
-                    **{"data-bs-toggle": "collapse", "data-bs-target": f"#collapse{millier}"}
-                )
-            ]),
-            html.Div(id=f"collapse{millier}", className="accordion-collapse collapse", children=[
-                html.Div(className="accordion-body", children=[
-                    dcc.Checklist(
-                        options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
-                        id={'type': 'cubf-checklist', 'index': str(millier)},
-                        inline=True,
-                        className="form-check"
-                    )
-                ])
-            ])
+        dropdowns.append(html.Div(className="mb-3", children=[
+            html.Label(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", className="fw-semibold"),
+            dcc.Checklist(
+                options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
+                id={'type': 'cubf-checklist', 'index': str(millier)},
+                inline=True,
+                className="mb-2"
+            )
         ]))
 
-    accordion = html.Div(className="accordion", children=dropdowns)
-
-    return selected_url, "✅ Fichier XML chargé avec succès.", html.Div([
-        html.H4("Sélection des codes CUBF", className="fw-bold mb-3"),
-        accordion
-    ])
+    return ("✅ Fichier XML chargé avec succès.", dropdowns)
 
 
 @app.callback(
@@ -167,11 +147,11 @@ def load_xml(n_clicks, selected_url):
 def update_resultats(selected_codes_groups):
     df_xml = getattr(app.server, 'df_xml', pd.DataFrame())
     if df_xml.empty:
-        return html.Div("⚠️ Aucune donnée XML chargée.", className="alert alert-warning")
+        return "⚠️ Aucune donnée XML chargée."
 
     selected_codes = [code for group in selected_codes_groups if group for code in group]
     if not selected_codes:
-        return html.Div("ℹ️ Veuillez sélectionner au moins un code CUBF.", className="alert alert-info")
+        return "ℹ️ Veuillez sélectionner au moins un code CUBF."
 
     df_filtre = df_xml[df_xml["RL0105A"].isin(selected_codes)]
     total_batiments = len(df_filtre)
@@ -184,10 +164,11 @@ def update_resultats(selected_codes_groups):
         .rename(columns={"RL0105A": "Code CUBF"})
     )
 
-    return html.Div(className="card p-4 shadow-sm", children=[
-        html.H4("📊 Résultats", className="fw-bold text-success mb-3"),
+    return html.Div([
+        html.H3("📑 Résultats", className="fw-bold text-success"),
         html.P(f"**Nombre total d’unités sélectionnées :** {total_batiments}", className="text-muted"),
         html.P(f"**Nombre total de logements :** {total_logements}", className="text-muted"),
+
         dash_table.DataTable(
             data=df_resume.to_dict('records'),
             columns=[{'name': col, 'id': col} for col in df_resume.columns],
