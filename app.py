@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 import base64
 
-# ✅ Ajouter Bootstrap pour le style
+# ✅ Bootstrap uniquement pour le style
 app = dash.Dash(__name__, external_stylesheets=[
     "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
 ])
@@ -69,30 +69,25 @@ def parse_xml_to_df(xml_bytes):
 
 df_mrc = fetch_mrc_roles()
 
-# ✅ Layout moderne et responsive
-app.layout = html.Div(className="container py-5", children=[
-    html.Div(className="text-center mb-5", children=[
-        html.H1("📊 Analyse des rôles d’évaluation foncière du Québec", className="fw-bold text-primary"),
-        html.P("Sélectionnez une MRC et analysez les codes CUBF avec un design moderne.", className="lead text-muted")
-    ]),
-
-    html.Div(className="card p-4 shadow-sm mb-4", children=[
-        html.Label("📍 Choisissez une MRC :", className="form-label fw-semibold"),
+# ✅ Layout original avec un peu de style
+app.layout = html.Div(className="container py-4", children=[
+    html.H1("📊 Analyse des rôles d’évaluation foncière du Québec par codes CUBF", className="mb-4 text-center text-primary"),
+    html.Div(className="card p-3 mb-4", children=[
+        html.Label("📍 Choisissez une MRC :", className="fw-bold"),
         dcc.Dropdown(
             id='mrc-dropdown',
             options=[{'label': row['MRC'], 'value': row['URL']} for _, row in df_mrc.iterrows()],
             placeholder="Sélectionner une MRC",
-            className="form-select mb-3"
+            className="mb-3"
         ),
         html.A(id='xml-download-link', href="#", target="_blank",
                children="⬇️ Télécharger le fichier XML brut",
-               className="btn btn-outline-secondary mb-3 w-100"),
-        html.Button("🚀 Charger et analyser le fichier XML", id='load-button', n_clicks=0, className="btn btn-primary w-100"),
-        html.Div(id='load-status', className="alert alert-info mt-3", role="alert")
+               className="btn btn-outline-secondary mb-2"),
+        html.Button("🚀 Charger et analyser le fichier XML", id='load-button', n_clicks=0, className="btn btn-primary"),
+        html.Div(id='load-status', className="mt-3")
     ]),
-
-    html.Div(id='cubf-section', className="my-4"),
-    html.Div(id='resultats', className="my-5")
+    html.Div(id='cubf-section', className="mt-4"),
+    html.Div(id='resultats', className="mt-5")
 ])
 
 
@@ -132,18 +127,13 @@ def load_xml(n_clicks, selected_url):
 
     checklist_groups = []
     for millier in sorted(grouped.keys()):
-        checklist_groups.append(html.Div(className="card p-3 mb-3", children=[
-            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", className="fw-semibold mb-2"),
-            html.Div(className="row g-2", children=[
-                html.Div(className="col", children=[
-                    dcc.Checklist(
-                        options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
-                        id={'type': 'cubf-checklist', 'index': str(millier)},
-                        inline=False,  # ✅ Chaque code sur une ligne
-                        className="form-check"
-                    )
-                ])
-            ])
+        checklist_groups.append(html.Div(className="card p-2 mb-2", children=[
+            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus"),
+            dcc.Checklist(
+                options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
+                id={'type': 'cubf-checklist', 'index': str(millier)},
+                inline=True
+            )
         ]))
 
     return selected_url, "✅ Fichier XML chargé avec succès.", html.Div([
@@ -162,11 +152,7 @@ def update_resultats(selected_codes_groups):
     if df_xml.empty:
         return html.Div("⚠️ Aucune donnée XML chargée.", className="alert alert-warning")
 
-    selected_codes = []
-    for group in selected_codes_groups:
-        if group:
-            selected_codes.extend(group)
-
+    selected_codes = [code for group in selected_codes_groups if group for code in group]
     if not selected_codes:
         return html.Div("ℹ️ Veuillez sélectionner au moins un code CUBF.", className="alert alert-info")
 
@@ -185,21 +171,19 @@ def update_resultats(selected_codes_groups):
         .rename(columns={"RL0105A": "Code CUBF"})
     )
 
-    return html.Div(className="card p-4 shadow-sm", children=[
-        html.H4("📊 Résultats", className="fw-bold text-success mb-3"),
-        html.Ul([
-            html.Li(f"Nombre total d’unités sélectionnées : {total_batiments}", className="mb-1"),
-            html.Li(f"Nombre total de logements : {total_logements}")
-        ], className="list-unstyled text-muted"),
+    return html.Div(className="card p-3", children=[
+        html.H4("📊 Résultats", className="fw-bold mb-3 text-success"),
+        html.P(f"Nombre total d’unités sélectionnées : {total_batiments}", className="mb-1"),
+        html.P(f"Nombre total de logements : {total_logements}", className="mb-3"),
         dash_table.DataTable(
             data=df_resume.to_dict('records'),
             columns=[{'name': col, 'id': col} for col in df_resume.columns],
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'center'},
-            className="table table-striped table-hover"
+            className="table table-striped table-bordered"
         ),
         html.A("⬇️ Télécharger les résultats filtrés (CSV)", href=csv_href, download="resultats_filtrés.csv",
-               className="btn btn-outline-primary mt-3 w-100")
+               className="btn btn-outline-primary mt-3")
     ])
 
 
