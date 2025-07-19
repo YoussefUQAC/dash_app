@@ -7,11 +7,17 @@ from collections import defaultdict
 import io
 import base64
 
-# ✅ Ajouter Bootstrap + Font Awesome pour un design moderne
-app = dash.Dash(__name__, external_stylesheets=[
-    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
-    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-])
+# ✅ Ajouter Bootstrap CSS et JS (pour accordéons, dropdown, etc.)
+app = dash.Dash(
+    __name__,
+    external_stylesheets=[
+        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    ],
+    external_scripts=[
+        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+    ]
+)
 server = app.server
 
 
@@ -71,7 +77,7 @@ def parse_xml_to_df(xml_bytes):
 
 df_mrc = fetch_mrc_roles()
 
-# ✅ Nouveau layout moderne et responsive
+# ✅ Nouveau layout modernisé et responsive
 app.layout = html.Div(className="container py-5", children=[
     html.Div(className="text-center mb-5", children=[
         html.H1("📊 Analyse des rôles d’évaluation foncière du Québec", className="fw-bold text-primary"),
@@ -132,21 +138,34 @@ def load_xml(n_clicks, selected_url):
             millier = "Inconnu"
         grouped[millier].append(code)
 
-    checklist_groups = []
-    for millier in sorted(grouped.keys()):
-        checklist_groups.append(html.Div(className="card p-3 mb-3", children=[
-            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", className="fw-semibold"),
-            dcc.Checklist(
-                options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
-                id={'type': 'cubf-checklist', 'index': str(millier)},
-                inline=True,
-                className="form-check"
-            )
+    accordion_items = []
+    for idx, millier in enumerate(sorted(grouped.keys())):
+        accordion_items.append(html.Div(className="accordion-item", children=[
+            html.H2(className="accordion-header", children=[
+                html.Button(
+                    f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus",
+                    className="accordion-button collapsed",
+                    type="button",
+                    **{"data-bs-toggle": "collapse", "data-bs-target": f"#collapse{idx}"}
+                )
+            ]),
+            html.Div(id=f"collapse{idx}", className="accordion-collapse collapse", children=[
+                html.Div(className="accordion-body", children=[
+                    dcc.Checklist(
+                        options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
+                        id={'type': 'cubf-checklist', 'index': str(millier)},
+                        inline=True,
+                        className="form-check"
+                    )
+                ])
+            ])
         ]))
+
+    accordion = html.Div(className="accordion", children=accordion_items)
 
     return selected_url, "✅ Fichier XML chargé avec succès.", html.Div([
         html.H4("Sélection des codes CUBF", className="fw-bold mb-3"),
-        *checklist_groups
+        accordion
     ])
 
 
