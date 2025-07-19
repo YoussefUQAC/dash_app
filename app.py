@@ -4,10 +4,9 @@ import pandas as pd
 import requests
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-import io
 import base64
 
-# ✅ Ajouter Bootstrap CSS et JS (pour accordéons, dropdown, etc.)
+# ✅ Ajout Bootstrap CSS et JS pour design et interactions
 app = dash.Dash(
     __name__,
     external_stylesheets=[
@@ -77,7 +76,7 @@ def parse_xml_to_df(xml_bytes):
 
 df_mrc = fetch_mrc_roles()
 
-# ✅ Nouveau layout modernisé et responsive
+# ✅ Layout modernisé et responsive
 app.layout = html.Div(className="container py-5", children=[
     html.Div(className="text-center mb-5", children=[
         html.H1("📊 Analyse des rôles d’évaluation foncière du Québec", className="fw-bold text-primary"),
@@ -138,19 +137,13 @@ def load_xml(n_clicks, selected_url):
             millier = "Inconnu"
         grouped[millier].append(code)
 
-    accordion_items = []
-    for idx, millier in enumerate(sorted(grouped.keys())):
-        accordion_items.append(html.Div(className="accordion-item", children=[
-            html.H2(className="accordion-header", children=[
-                html.Button(
-                    f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus",
-                    className="accordion-button collapsed",
-                    type="button",
-                    **{"data-bs-toggle": "collapse", "data-bs-target": f"#collapse{idx}"}
-                )
-            ]),
-            html.Div(id=f"collapse{idx}", className="accordion-collapse collapse", children=[
-                html.Div(className="accordion-body", children=[
+    checklist_groups = []
+    for millier in sorted(grouped.keys()):
+        checklist_groups.append(html.Div(className="mb-4", children=[
+            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus",
+                    className="fw-semibold mb-2"),
+            html.Div(className="row", children=[
+                html.Div(className="col-md-3 mb-2", children=[
                     dcc.Checklist(
                         options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
                         id={'type': 'cubf-checklist', 'index': str(millier)},
@@ -161,11 +154,9 @@ def load_xml(n_clicks, selected_url):
             ])
         ]))
 
-    accordion = html.Div(className="accordion", children=accordion_items)
-
     return selected_url, "✅ Fichier XML chargé avec succès.", html.Div([
         html.H4("Sélection des codes CUBF", className="fw-bold mb-3"),
-        accordion
+        *checklist_groups
     ])
 
 
@@ -210,7 +201,7 @@ def update_resultats(selected_codes_groups):
             columns=[{'name': col, 'id': col} for col in df_resume.columns],
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'center'},
-            className="table table-striped"
+            className="table table-striped table-hover"
         ),
         html.A("⬇️ Télécharger les résultats filtrés (CSV)", href=csv_href, download="resultats_filtrés.csv",
                className="btn btn-outline-primary mt-3 w-100")
