@@ -164,9 +164,9 @@ def update_resultats(selected_codes_groups):
             data=df_resume.to_dict('records'),
             columns=[{'name': col, 'id': col} for col in df_resume.columns],
             style_table={'overflowX': 'auto'},
-            style_cell={'textAlign': 'ceynter'}
+            style_cell={'textAlign': 'center'}
         )
     ])
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=8050)
+    app.run(debug=True, host='0.0.0.0', port=8050)
