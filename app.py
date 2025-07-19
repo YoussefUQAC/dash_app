@@ -4,19 +4,12 @@ import pandas as pd
 import requests
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-import base64
 
-# ✅ Ajout Bootstrap CSS et JS pour design et interactions
-app = dash.Dash(
-    __name__,
-    external_stylesheets=[
-        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
-        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    ],
-    external_scripts=[
-        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-    ]
-)
+# ✅ Ajout de Bootstrap et de custom CSS
+app = dash.Dash(__name__, external_stylesheets=[
+    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+])
 server = app.server
 
 
@@ -76,11 +69,11 @@ def parse_xml_to_df(xml_bytes):
 
 df_mrc = fetch_mrc_roles()
 
-# ✅ Layout modernisé et responsive
+# ✅ Nouveau layout modernisé
 app.layout = html.Div(className="container py-5", children=[
     html.Div(className="text-center mb-5", children=[
         html.H1("📊 Analyse des rôles d’évaluation foncière du Québec", className="fw-bold text-primary"),
-        html.P("Sélectionnez une MRC et analysez les codes CUBF avec un design moderne ✨", className="lead text-muted")
+        html.P("Sélectionnez une MRC et analysez les codes CUBF avec un design épuré ✨", className="lead text-muted")
     ]),
 
     html.Div(className="card p-4 shadow-sm mb-4", children=[
@@ -91,11 +84,9 @@ app.layout = html.Div(className="container py-5", children=[
             placeholder="Sélectionner une MRC",
             className="form-select mb-3"
         ),
-        html.A(id='xml-download-link', href="#", target="_blank",
-               children="⬇️ Télécharger le fichier XML brut",
-               className="btn btn-outline-secondary mb-3 w-100"),
+        html.A(id='download-link', href="#", children="⬇️ Télécharger le fichier XML", className="d-block mb-3 text-decoration-none text-primary fw-semibold"),
         html.Button("🚀 Charger et analyser le fichier XML", id='load-button', n_clicks=0, className="btn btn-primary w-100"),
-        html.Div(id='load-status', className="alert alert-info mt-3", role="alert")
+        html.Div(id='load-status', className="alert alert-success mt-3", role="alert")
     ]),
 
     html.Div(id='cubf-section', className="my-4"),
@@ -104,7 +95,7 @@ app.layout = html.Div(className="container py-5", children=[
 
 
 @app.callback(
-    [Output('xml-download-link', 'href'),
+    [Output('download-link', 'href'),
      Output('load-status', 'children'),
      Output('cubf-section', 'children')],
     Input('load-button', 'n_clicks'),
@@ -137,13 +128,19 @@ def load_xml(n_clicks, selected_url):
             millier = "Inconnu"
         grouped[millier].append(code)
 
-    checklist_groups = []
+    dropdowns = []
     for millier in sorted(grouped.keys()):
-        checklist_groups.append(html.Div(className="mb-4", children=[
-            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus",
-                    className="fw-semibold mb-2"),
-            html.Div(className="row", children=[
-                html.Div(className="col-md-3 mb-2", children=[
+        dropdowns.append(html.Div(className="accordion-item", children=[
+            html.H2(className="accordion-header", children=[
+                html.Button(
+                    f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus",
+                    className="accordion-button collapsed",
+                    type="button",
+                    **{"data-bs-toggle": "collapse", "data-bs-target": f"#collapse{millier}"}
+                )
+            ]),
+            html.Div(id=f"collapse{millier}", className="accordion-collapse collapse", children=[
+                html.Div(className="accordion-body", children=[
                     dcc.Checklist(
                         options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
                         id={'type': 'cubf-checklist', 'index': str(millier)},
@@ -154,9 +151,11 @@ def load_xml(n_clicks, selected_url):
             ])
         ]))
 
+    accordion = html.Div(className="accordion", children=dropdowns)
+
     return selected_url, "✅ Fichier XML chargé avec succès.", html.Div([
         html.H4("Sélection des codes CUBF", className="fw-bold mb-3"),
-        *checklist_groups
+        accordion
     ])
 
 
@@ -170,23 +169,13 @@ def update_resultats(selected_codes_groups):
     if df_xml.empty:
         return html.Div("⚠️ Aucune donnée XML chargée.", className="alert alert-warning")
 
-    # 🟢 Aplatir toutes les listes sélectionnées
-    selected_codes = []
-    for group in selected_codes_groups:
-        if group:
-            selected_codes.extend(group)
-
+    selected_codes = [code for group in selected_codes_groups if group for code in group]
     if not selected_codes:
         return html.Div("ℹ️ Veuillez sélectionner au moins un code CUBF.", className="alert alert-info")
 
     df_filtre = df_xml[df_xml["RL0105A"].isin(selected_codes)]
     total_batiments = len(df_filtre)
     total_logements = df_filtre["RL0311A"].sum()
-
-    # 📝 Créer le CSV pour téléchargement
-    csv_string = df_filtre.to_csv(index=False, encoding='utf-8')
-    b64_csv = base64.b64encode(csv_string.encode()).decode()
-    csv_href = f"data:text/csv;base64,{b64_csv}"
 
     df_resume = (
         df_filtre.groupby("RL0105A")
@@ -197,21 +186,16 @@ def update_resultats(selected_codes_groups):
 
     return html.Div(className="card p-4 shadow-sm", children=[
         html.H4("📊 Résultats", className="fw-bold text-success mb-3"),
-        html.Ul([
-            html.Li(f"Nombre total d’unités sélectionnées : {total_batiments}", className="mb-1"),
-            html.Li(f"Nombre total de logements : {total_logements}")
-        ], className="list-unstyled text-muted"),
+        html.P(f"**Nombre total d’unités sélectionnées :** {total_batiments}", className="text-muted"),
+        html.P(f"**Nombre total de logements :** {total_logements}", className="text-muted"),
         dash_table.DataTable(
             data=df_resume.to_dict('records'),
             columns=[{'name': col, 'id': col} for col in df_resume.columns],
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'center'},
-            className="table table-striped table-hover"
-        ),
-        html.A("⬇️ Télécharger les résultats filtrés (CSV)", href=csv_href, download="resultats_filtrés.csv",
-               className="btn btn-outline-primary mt-3 w-100")
+            className="table table-striped"
+        )
     ])
-
 
 
 if __name__ == '__main__':
