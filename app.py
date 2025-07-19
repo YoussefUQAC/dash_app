@@ -170,7 +170,12 @@ def update_resultats(selected_codes_groups):
     if df_xml.empty:
         return html.Div("⚠️ Aucune donnée XML chargée.", className="alert alert-warning")
 
-    selected_codes = [code for group in selected_codes_groups if group for code in group]
+    # 🟢 Aplatir toutes les listes sélectionnées
+    selected_codes = []
+    for group in selected_codes_groups:
+        if group:
+            selected_codes.extend(group)
+
     if not selected_codes:
         return html.Div("ℹ️ Veuillez sélectionner au moins un code CUBF.", className="alert alert-info")
 
@@ -178,7 +183,7 @@ def update_resultats(selected_codes_groups):
     total_batiments = len(df_filtre)
     total_logements = df_filtre["RL0311A"].sum()
 
-    # Préparer le CSV pour téléchargement
+    # 📝 Créer le CSV pour téléchargement
     csv_string = df_filtre.to_csv(index=False, encoding='utf-8')
     b64_csv = base64.b64encode(csv_string.encode()).decode()
     csv_href = f"data:text/csv;base64,{b64_csv}"
@@ -206,6 +211,7 @@ def update_resultats(selected_codes_groups):
         html.A("⬇️ Télécharger les résultats filtrés (CSV)", href=csv_href, download="resultats_filtrés.csv",
                className="btn btn-outline-primary mt-3 w-100")
     ])
+
 
 
 if __name__ == '__main__':
