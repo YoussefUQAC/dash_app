@@ -5,7 +5,9 @@ import requests
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, external_stylesheets=[
+    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+])
 server = app.server
 
 def fetch_mrc_roles():
