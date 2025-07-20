@@ -5,7 +5,6 @@ import requests
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-# ✅ Import Bootstrap CSS
 app = dash.Dash(__name__, external_stylesheets=[
     "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
 ])
@@ -67,29 +66,25 @@ def parse_xml_to_df(xml_bytes):
 
 df_mrc = fetch_mrc_roles()
 
-# ✅ Nouveau layout avec Bootstrap
-app.layout = html.Div(className="container my-5", children=[
-    html.Div(className="text-center mb-5", children=[
-        html.H1("📊 Analyse des rôles d’évaluation foncière du Québec", className="fw-bold text-primary"),
-        html.P("Sélectionnez une MRC et analysez les codes CUBF rapidement", className="lead text-muted")
-    ]),
+app.layout = html.Div([
+    html.H1("Analyse des rôles d’évaluation foncière du Québec par codes CUBF", style={'textAlign': 'center'}),
+    html.Hr(),
 
-    html.Div(className="card p-4 shadow-sm mb-4", children=[
-        html.Label("📍 Choisissez une MRC :", className="form-label fw-semibold"),
-        dcc.Dropdown(
-            id='mrc-dropdown',
-            options=[{'label': row['MRC'], 'value': row['URL']} for _, row in df_mrc.iterrows()],
-            placeholder="Sélectionner une MRC",
-            className="form-select mb-3"
-        ),
-        html.Button("🚀 Charger et analyser le fichier XML", id='load-button', n_clicks=0, className="btn btn-success w-100"),
-        html.Div(id='load-status', className="alert alert-info mt-3")
-    ]),
+    html.Label("Choisissez une MRC :"),
+    dcc.Dropdown(
+        id='mrc-dropdown',
+        options=[{'label': row['MRC'], 'value': row['URL']} for _, row in df_mrc.iterrows()],
+        placeholder="Sélectionner une MRC"
+    ),
+    html.Br(),
 
-    html.Div(id='cubf-section', className="card p-4 shadow-sm my-4"),
-    html.Div(id='resultats', className="card p-4 shadow-sm my-5 bg-light")
+    html.Button("Charger et analyser le fichier XML", id='load-button', n_clicks=0),
+    html.Div(id='load-status', style={'marginTop': '10px', 'color': 'green'}),
+
+    html.Div(id='cubf-section', style={'marginTop': '20px'}),
+
+    html.Div(id='resultats', style={'marginTop': '30px'})
 ])
-
 
 @app.callback(
     [Output('load-status', 'children'),
@@ -126,18 +121,16 @@ def load_xml(n_clicks, selected_url):
 
     dropdowns = []
     for millier in sorted(grouped.keys()):
-        dropdowns.append(html.Div(className="mb-3", children=[
-            html.Label(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", className="fw-semibold"),
+        dropdowns.append(html.Div([
+            html.Label(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus"),
             dcc.Checklist(
                 options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
                 id={'type': 'cubf-checklist', 'index': str(millier)},
-                inline=True,
-                className="mb-2"
+                inline=True
             )
-        ]))
+        ], style={'marginTop': '10px'}))
 
     return ("✅ Fichier XML chargé avec succès.", dropdowns)
-
 
 @app.callback(
     Output('resultats', 'children'),
@@ -165,19 +158,17 @@ def update_resultats(selected_codes_groups):
     )
 
     return html.Div([
-        html.H3("📑 Résultats", className="fw-bold text-success"),
-        html.P(f"**Nombre total d’unités sélectionnées :** {total_batiments}", className="text-muted"),
-        html.P(f"**Nombre total de logements :** {total_logements}", className="text-muted"),
+        html.H3("Résultats"),
+        html.P(f"**Nombre total d’unités sélectionnées :** {total_batiments}"),
+        html.P(f"**Nombre total de logements :** {total_logements}"),
 
         dash_table.DataTable(
             data=df_resume.to_dict('records'),
             columns=[{'name': col, 'id': col} for col in df_resume.columns],
             style_table={'overflowX': 'auto'},
-            style_cell={'textAlign': 'center'},
-            className="table table-striped"
+            style_cell={'textAlign': 'center'}
         )
     ])
-
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8050)
