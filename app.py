@@ -123,14 +123,25 @@ def load_xml(n_clicks, selected_url):
 
     dropdowns = []
     for millier in sorted(grouped.keys()):
-        dropdowns.append(html.Div(style={'marginTop': '10px'}, children=[
-            html.Label(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", style={'fontWeight': 'bold'}),
-            dcc.Checklist(
-                options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
-                id={'type': 'cubf-checklist', 'index': str(millier)},
-                inline=True
-            )
+        dropdowns.append(html.Div(style={'marginTop': '15px'}, children=[
+            html.Label(
+                f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus",
+                style={'fontWeight': 'bold', 'fontSize': '18px', 'marginBottom': '10px', 'display': 'block'}
+            ),
+            html.Div(style={
+                'display': 'grid',
+                'gridTemplateColumns': 'repeat(auto-fill, minmax(120px, 1fr))',
+                'gap': '8px'
+            }, children=[
+                dcc.Checklist(
+                    options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
+                    id={'type': 'cubf-checklist', 'index': str(millier)},
+                    inline=False,
+                    style={'marginBottom': '5px'}
+                )
+            ])
         ]))
+
 
     return ("✅ Fichier XML chargé avec succès.", dropdowns)
 
