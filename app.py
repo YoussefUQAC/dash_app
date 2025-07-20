@@ -67,27 +67,27 @@ def parse_xml_to_df(xml_bytes):
 
 df_mrc = fetch_mrc_roles()
 
-# ✅ Nouveau layout avec Bootstrap
-app.layout = html.Div(className="container my-5", children=[
-    html.Div(className="text-center mb-5", children=[
+# ✅ Layout modernisé avec Bootstrap
+app.layout = html.Div(className="container py-5", children=[
+    html.Div(className="text-center mb-4", children=[
         html.H1("📊 Analyse des rôles d’évaluation foncière du Québec", className="fw-bold text-primary"),
-        html.P("Sélectionnez une MRC et analysez les codes CUBF rapidement", className="lead text-muted")
+        html.P("Sélectionnez une MRC et analysez les codes CUBF facilement.", className="lead text-muted")
     ]),
 
     html.Div(className="card p-4 shadow-sm mb-4", children=[
-        html.Label("📍 Choisissez une MRC :", className="form-label fw-semibold"),
+        html.Label("📍 Choisissez une MRC :", className="form-label fw-bold"),
         dcc.Dropdown(
             id='mrc-dropdown',
             options=[{'label': row['MRC'], 'value': row['URL']} for _, row in df_mrc.iterrows()],
             placeholder="Sélectionner une MRC",
-            className="form-select mb-3"
+            className="mb-3"
         ),
         html.Button("🚀 Charger et analyser le fichier XML", id='load-button', n_clicks=0, className="btn btn-success w-100"),
-        html.Div(id='load-status', className="alert alert-info mt-3")
+        html.Div(id='load-status', className="mt-3 alert alert-info")
     ]),
 
-    html.Div(id='cubf-section', className="card p-4 shadow-sm my-4"),
-    html.Div(id='resultats', className="card p-4 shadow-sm my-5 bg-light")
+    html.Div(id='cubf-section', className="mt-4"),
+    html.Div(id='resultats', className="mt-5")
 ])
 
 
@@ -126,8 +126,8 @@ def load_xml(n_clicks, selected_url):
 
     dropdowns = []
     for millier in sorted(grouped.keys()):
-        dropdowns.append(html.Div(className="mb-3", children=[
-            html.Label(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", className="fw-semibold"),
+        dropdowns.append(html.Div(className="card p-3 mb-3", children=[
+            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", className="fw-semibold"),
             dcc.Checklist(
                 options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
                 id={'type': 'cubf-checklist', 'index': str(millier)},
@@ -147,11 +147,11 @@ def load_xml(n_clicks, selected_url):
 def update_resultats(selected_codes_groups):
     df_xml = getattr(app.server, 'df_xml', pd.DataFrame())
     if df_xml.empty:
-        return "⚠️ Aucune donnée XML chargée."
+        return html.Div("⚠️ Aucune donnée XML chargée.", className="alert alert-warning")
 
     selected_codes = [code for group in selected_codes_groups if group for code in group]
     if not selected_codes:
-        return "ℹ️ Veuillez sélectionner au moins un code CUBF."
+        return html.Div("ℹ️ Veuillez sélectionner au moins un code CUBF.", className="alert alert-info")
 
     df_filtre = df_xml[df_xml["RL0105A"].isin(selected_codes)]
     total_batiments = len(df_filtre)
@@ -164,17 +164,17 @@ def update_resultats(selected_codes_groups):
         .rename(columns={"RL0105A": "Code CUBF"})
     )
 
-    return html.Div([
-        html.H3("📑 Résultats", className="fw-bold text-success"),
-        html.P(f"**Nombre total d’unités sélectionnées :** {total_batiments}", className="text-muted"),
-        html.P(f"**Nombre total de logements :** {total_logements}", className="text-muted"),
+    return html.Div(className="card p-4 shadow-sm bg-light", children=[
+        html.H3("📑 Résultats", className="fw-bold text-success mb-3"),
+        html.P(f"Nombre total d’unités sélectionnées : {total_batiments}", className="mb-1"),
+        html.P(f"Nombre total de logements : {total_logements}", className="mb-3"),
 
         dash_table.DataTable(
             data=df_resume.to_dict('records'),
             columns=[{'name': col, 'id': col} for col in df_resume.columns],
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'center'},
-            className="table table-striped"
+            className="table table-bordered table-hover"
         )
     ])
 
