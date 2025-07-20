@@ -5,10 +5,7 @@ import requests
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-# ✅ Ajout Bootstrap pour un style moderne
-app = dash.Dash(__name__, external_stylesheets=[
-    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-])
+app = dash.Dash(__name__)
 server = app.server
 
 def fetch_mrc_roles():
@@ -67,25 +64,27 @@ def parse_xml_to_df(xml_bytes):
 
 df_mrc = fetch_mrc_roles()
 
-# ✅ Layout moderne
-app.layout = html.Div(className="container my-5", children=[
-    html.H1("📊 Analyse des rôles d’évaluation foncière du Québec par codes CUBF",
-            className="text-center mb-4 text-primary fw-bold"),
+# ✅ Layout minimal et espacé
+app.layout = html.Div(style={'maxWidth': '1000px', 'margin': '0 auto', 'padding': '20px'}, children=[
+    html.H1("📊 Analyse des rôles d’évaluation foncière du Québec par codes CUBF", style={'textAlign': 'center', 'color': '#2c3e50'}),
     html.Hr(),
 
-    html.Label("📍 Choisissez une MRC :", className="form-label fw-semibold"),
+    html.Label("📍 Choisissez une MRC :", style={'fontWeight': 'bold'}),
     dcc.Dropdown(
         id='mrc-dropdown',
         options=[{'label': row['MRC'], 'value': row['URL']} for _, row in df_mrc.iterrows()],
         placeholder="Sélectionner une MRC",
-        className="form-select mb-3"
+        style={'marginBottom': '20px'}
     ),
-    html.Button("🚀 Charger et analyser le fichier XML", id='load-button', n_clicks=0,
-                className="btn btn-primary w-100 mb-3"),
-    html.Div(id='load-status', className="alert alert-info"),
 
-    html.Div(id='cubf-section', className="mt-4"),
-    html.Div(id='resultats', className="mt-5")
+    html.Button("🚀 Charger et analyser le fichier XML", id='load-button', n_clicks=0, style={
+        'backgroundColor': '#3498db', 'color': 'white', 'padding': '10px 20px', 'border': 'none', 'borderRadius': '5px'
+    }),
+    html.Div(id='load-status', style={'marginTop': '15px', 'fontWeight': 'bold', 'color': '#27ae60'}),
+
+    html.Div(id='cubf-section', style={'marginTop': '30px'}),
+
+    html.Div(id='resultats', style={'marginTop': '40px'})
 ])
 
 
@@ -122,24 +121,16 @@ def load_xml(n_clicks, selected_url):
             millier = "Inconnu"
         grouped[millier].append(code)
 
-    # ✅ Style multi-colonnes pour les codes CUBF
     dropdowns = []
     for millier in sorted(grouped.keys()):
-        dropdowns.append(html.Div([
-            html.Label(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus",
-                       className="fw-bold mb-2"),
-            html.Div(style={
-                'display': 'grid',
-                'gridTemplateColumns': 'repeat(auto-fill, minmax(120px, 1fr))',
-                'gap': '8px'
-            }, children=[
-                dcc.Checklist(
-                    options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
-                    id={'type': 'cubf-checklist', 'index': str(millier)},
-                    inline=False
-                )
-            ])
-        ], className="card p-3 mb-3 shadow-sm"))
+        dropdowns.append(html.Div(style={'marginTop': '10px'}, children=[
+            html.Label(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", style={'fontWeight': 'bold'}),
+            dcc.Checklist(
+                options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
+                id={'type': 'cubf-checklist', 'index': str(millier)},
+                inline=True
+            )
+        ]))
 
     return ("✅ Fichier XML chargé avec succès.", dropdowns)
 
@@ -152,11 +143,11 @@ def load_xml(n_clicks, selected_url):
 def update_resultats(selected_codes_groups):
     df_xml = getattr(app.server, 'df_xml', pd.DataFrame())
     if df_xml.empty:
-        return html.Div("⚠️ Aucune donnée XML chargée.", className="alert alert-warning")
+        return "⚠️ Aucune donnée XML chargée."
 
     selected_codes = [code for group in selected_codes_groups if group for code in group]
     if not selected_codes:
-        return html.Div("ℹ️ Veuillez sélectionner au moins un code CUBF.", className="alert alert-info")
+        return "ℹ️ Veuillez sélectionner au moins un code CUBF."
 
     df_filtre = df_xml[df_xml["RL0105A"].isin(selected_codes)]
     total_batiments = len(df_filtre)
@@ -169,17 +160,17 @@ def update_resultats(selected_codes_groups):
         .rename(columns={"RL0105A": "Code CUBF"})
     )
 
-    return html.Div(className="card p-4 shadow-sm", children=[
-        html.H3("📑 Résultats", className="fw-bold text-success mb-3"),
-        html.P(f"Nombre total d’unités sélectionnées : {total_batiments}", className="mb-1"),
-        html.P(f"Nombre total de logements : {total_logements}", className="mb-3"),
+    return html.Div([
+        html.H3("📑 Résultats", style={'color': '#27ae60', 'marginBottom': '20px'}),
+        html.P(f"Nombre total d’unités sélectionnées : {total_batiments}", style={'fontSize': '16px'}),
+        html.P(f"Nombre total de logements : {total_logements}", style={'fontSize': '16px'}),
+
         dash_table.DataTable(
             data=df_resume.to_dict('records'),
             columns=[{'name': col, 'id': col} for col in df_resume.columns],
-            style_table={'overflowX': 'auto'},
-            style_cell={'textAlign': 'center', 'padding': '8px'},
-            style_header={'backgroundColor': '#f8f9fa', 'fontWeight': '600'},
-            className="table table-striped"
+            style_table={'overflowX': 'auto', 'marginTop': '20px'},
+            style_cell={'textAlign': 'center', 'padding': '10px'},
+            style_header={'backgroundColor': '#f2f2f2', 'fontWeight': 'bold'}
         )
     ])
 
