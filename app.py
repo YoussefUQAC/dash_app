@@ -4,19 +4,14 @@ import pandas as pd
 import requests
 import xml.etree.ElementTree as ET
 from collections import defaultdict
+import io
 import base64
 
-# ✅ Ajout Bootstrap CSS et JS pour design et interactions
-app = dash.Dash(
-    __name__,
-    external_stylesheets=[
-        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
-        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    ],
-    external_scripts=[
-        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-    ]
-)
+# ✅ Ajouter Bootstrap + Font Awesome pour un design moderne
+app = dash.Dash(__name__, external_stylesheets=[
+    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+])
 server = app.server
 
 
@@ -76,7 +71,7 @@ def parse_xml_to_df(xml_bytes):
 
 df_mrc = fetch_mrc_roles()
 
-# ✅ Layout modernisé et responsive
+# ✅ Nouveau layout moderne et responsive
 app.layout = html.Div(className="container py-5", children=[
     html.Div(className="text-center mb-5", children=[
         html.H1("📊 Analyse des rôles d’évaluation foncière du Québec", className="fw-bold text-primary"),
@@ -139,19 +134,14 @@ def load_xml(n_clicks, selected_url):
 
     checklist_groups = []
     for millier in sorted(grouped.keys()):
-        checklist_groups.append(html.Div(className="mb-4", children=[
-            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus",
-                    className="fw-semibold mb-2"),
-            html.Div(className="row", children=[
-                html.Div(className="col-md-3 mb-2", children=[
-                    dcc.Checklist(
-                        options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
-                        id={'type': 'cubf-checklist', 'index': str(millier)},
-                        inline=True,
-                        className="form-check"
-                    )
-                ])
-            ])
+        checklist_groups.append(html.Div(className="card p-3 mb-3", children=[
+            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", className="fw-semibold"),
+            dcc.Checklist(
+                options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
+                id={'type': 'cubf-checklist', 'index': str(millier)},
+                inline=True,
+                className="form-check"
+            )
         ]))
 
     return selected_url, "✅ Fichier XML chargé avec succès.", html.Div([
@@ -201,7 +191,7 @@ def update_resultats(selected_codes_groups):
             columns=[{'name': col, 'id': col} for col in df_resume.columns],
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'center'},
-            className="table table-striped table-hover"
+            className="table table-striped"
         ),
         html.A("⬇️ Télécharger les résultats filtrés (CSV)", href=csv_href, download="resultats_filtrés.csv",
                className="btn btn-outline-primary mt-3 w-100")
