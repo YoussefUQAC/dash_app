@@ -4,12 +4,14 @@ import pandas as pd
 import requests
 import xml.etree.ElementTree as ET
 from collections import defaultdict
+import base64
 
-# ✅ Import Bootstrap CSS
+# ✅ Bootstrap uniquement pour le style
 app = dash.Dash(__name__, external_stylesheets=[
     "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
 ])
 server = app.server
+
 
 def fetch_mrc_roles():
     resource_id = "d2db6102-9215-4abc-9b5b-2c37f2e12618"
@@ -67,32 +69,31 @@ def parse_xml_to_df(xml_bytes):
 
 df_mrc = fetch_mrc_roles()
 
-# ✅ Layout modernisé avec Bootstrap
-app.layout = html.Div(className="container py-5", children=[
-    html.Div(className="text-center mb-4", children=[
-        html.H1("📊 Analyse des rôles d’évaluation foncière du Québec", className="fw-bold text-primary"),
-        html.P("Sélectionnez une MRC et analysez les codes CUBF facilement.", className="lead text-muted")
-    ]),
-
-    html.Div(className="card p-4 shadow-sm mb-4", children=[
-        html.Label("📍 Choisissez une MRC :", className="form-label fw-bold"),
+# ✅ Layout original avec un peu de style
+app.layout = html.Div(className="container py-4", children=[
+    html.H1("📊 Analyse des rôles d’évaluation foncière du Québec par codes CUBF", className="mb-4 text-center text-primary"),
+    html.Div(className="card p-3 mb-4", children=[
+        html.Label("📍 Choisissez une MRC :", className="fw-bold"),
         dcc.Dropdown(
             id='mrc-dropdown',
             options=[{'label': row['MRC'], 'value': row['URL']} for _, row in df_mrc.iterrows()],
             placeholder="Sélectionner une MRC",
             className="mb-3"
         ),
-        html.Button("🚀 Charger et analyser le fichier XML", id='load-button', n_clicks=0, className="btn btn-success w-100"),
-        html.Div(id='load-status', className="mt-3 alert alert-info")
+        html.A(id='xml-download-link', href="#", target="_blank",
+               children="⬇️ Télécharger le fichier XML brut",
+               className="btn btn-outline-secondary mb-2"),
+        html.Button("🚀 Charger et analyser le fichier XML", id='load-button', n_clicks=0, className="btn btn-primary"),
+        html.Div(id='load-status', className="mt-3")
     ]),
-
     html.Div(id='cubf-section', className="mt-4"),
     html.Div(id='resultats', className="mt-5")
 ])
 
 
 @app.callback(
-    [Output('load-status', 'children'),
+    [Output('xml-download-link', 'href'),
+     Output('load-status', 'children'),
      Output('cubf-section', 'children')],
     Input('load-button', 'n_clicks'),
     State('mrc-dropdown', 'value'),
@@ -100,17 +101,17 @@ app.layout = html.Div(className="container py-5", children=[
 )
 def load_xml(n_clicks, selected_url):
     if not selected_url:
-        return ("⚠️ Veuillez sélectionner une MRC.", None)
+        return "#", "⚠️ Veuillez sélectionner une MRC.", None
 
     try:
         response = requests.get(selected_url)
         response.raise_for_status()
         df_xml = parse_xml_to_df(response.content)
     except Exception as e:
-        return (f"❌ Erreur lors du téléchargement : {e}", None)
+        return "#", f"❌ Erreur : {e}", None
 
     if df_xml.empty:
-        return ("⚠️ Aucun enregistrement trouvé.", None)
+        return "#", "⚠️ Aucun enregistrement trouvé.", None
 
     app.server.df_xml = df_xml
 
@@ -124,19 +125,21 @@ def load_xml(n_clicks, selected_url):
             millier = "Inconnu"
         grouped[millier].append(code)
 
-    dropdowns = []
+    checklist_groups = []
     for millier in sorted(grouped.keys()):
-        dropdowns.append(html.Div(className="card p-3 mb-3", children=[
-            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus", className="fw-semibold"),
+        checklist_groups.append(html.Div(className="card p-2 mb-2", children=[
+            html.H5(f"Codes {millier}–{millier + 999}" if isinstance(millier, int) else "Codes inconnus"),
             dcc.Checklist(
                 options=[{'label': code, 'value': code} for code in sorted(grouped[millier])],
                 id={'type': 'cubf-checklist', 'index': str(millier)},
-                inline=True,
-                className="mb-2"
+                inline=True
             )
         ]))
 
-    return ("✅ Fichier XML chargé avec succès.", dropdowns)
+    return selected_url, "✅ Fichier XML chargé avec succès.", html.Div([
+        html.H4("Sélection des codes CUBF", className="fw-bold mb-3"),
+        *checklist_groups
+    ])
 
 
 @app.callback(
@@ -157,6 +160,10 @@ def update_resultats(selected_codes_groups):
     total_batiments = len(df_filtre)
     total_logements = df_filtre["RL0311A"].sum()
 
+    csv_string = df_filtre.to_csv(index=False, encoding='utf-8')
+    b64_csv = base64.b64encode(csv_string.encode()).decode()
+    csv_href = f"data:text/csv;base64,{b64_csv}"
+
     df_resume = (
         df_filtre.groupby("RL0105A")
         .agg(nb_batiments=("RL0105A", "count"), nb_logements=("RL0311A", "sum"))
@@ -164,18 +171,19 @@ def update_resultats(selected_codes_groups):
         .rename(columns={"RL0105A": "Code CUBF"})
     )
 
-    return html.Div(className="card p-4 shadow-sm bg-light", children=[
-        html.H3("📑 Résultats", className="fw-bold text-success mb-3"),
+    return html.Div(className="card p-3", children=[
+        html.H4("📊 Résultats", className="fw-bold mb-3 text-success"),
         html.P(f"Nombre total d’unités sélectionnées : {total_batiments}", className="mb-1"),
         html.P(f"Nombre total de logements : {total_logements}", className="mb-3"),
-
         dash_table.DataTable(
             data=df_resume.to_dict('records'),
             columns=[{'name': col, 'id': col} for col in df_resume.columns],
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'center'},
-            className="table table-bordered table-hover"
-        )
+            className="table table-striped table-bordered"
+        ),
+        html.A("⬇️ Télécharger les résultats filtrés (CSV)", href=csv_href, download="resultats_filtrés.csv",
+               className="btn btn-outline-primary mt-3")
     ])
 
 
