@@ -67,7 +67,7 @@ def parse_xml_to_df(xml_bytes):
 
 df_mrc = fetch_mrc_roles()
 
-# ✅ Nouveau layout avec Bootstrap
+# ✅ Layout original
 app.layout = html.Div(className="container my-5", children=[
     html.Div(className="text-center mb-5", children=[
         html.H1("📊 Analyse des rôles d’évaluation foncière du Québec", className="fw-bold text-primary"),
@@ -86,8 +86,8 @@ app.layout = html.Div(className="container my-5", children=[
         html.Div(id='load-status', className="alert alert-info mt-3")
     ]),
 
-    html.Div(id='cubf-section', className="card p-4 shadow-sm my-4"),
-    html.Div(id='resultats', className="card p-4 shadow-sm my-5 bg-light")
+    html.Div(id='cubf-section', className="my-4"),
+    html.Div(id='resultats', className="my-5")
 ])
 
 
